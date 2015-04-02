@@ -1,10 +1,8 @@
-/*
+package com.cwctravel.hudson.plugins.extended_choice_parameter;/*
  *Copyright (c) 2013 Costco, Vimil Saju
  *Copyright (c) 2013 John DiMatteo
  *See the file license.txt for copying permission.
  */
-
-package com.cwctravel.hudson.plugins.extended_choice_parameter;
 
 import groovy.lang.GroovyShell;
 import hudson.Extension;
@@ -37,6 +35,8 @@ import javax.servlet.ServletException;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.Property;
@@ -110,6 +110,31 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 			}
 		}
 
+		public FormValidation doCheckPropertyFileMulti(@QueryParameter final String propertyFileMulti,
+												  @QueryParameter final String type) throws IOException, ServletException {
+			if (StringUtils.isBlank(propertyFileMulti)) {
+				return FormValidation.ok();
+			}
+
+			Project project = new Project();
+			Property property = new Property();
+			property.setProject(project);
+
+			File prop = new File(propertyFileMulti);
+			try {
+				if (prop.exists()) {
+					property.setFile(prop);
+				} else {
+					URL propertyFileUrl = new URL(propertyFileMulti);
+					property.setUrl(propertyFileUrl);
+				}
+				property.execute();
+			} catch (Exception e) {
+				return FormValidation.warning(Messages.ExtendedChoiceParameterDefinition_PropertyFileDoesntExist(), propertyFileMulti);
+			}
+			return FormValidation.ok();
+		}
+
 		public FormValidation doCheckPropertyKey(@QueryParameter final String propertyFile, @QueryParameter final String propertyKey,
 				@QueryParameter final String type) throws IOException, ServletException {
 			return doCheckPropertyFile(propertyFile, propertyKey, type);
@@ -140,6 +165,13 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 			String groovyScript = null;
 			String groovyScriptFile = null;
 			String bindings = null;
+
+			String propertyValueMulti = null;
+			String propertyFileMulti = null;
+			String artifactoryURL = null;
+			String artifactoryRepositories = null;
+			String mustExclude = null;
+			String mustInclude = null;
 
 			String defaultPropertyValue = null;
 			String defaultPropertyKey = null;
@@ -203,21 +235,45 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 				}
 				else if(value == 1) {
 					type = parameterGroup.getString("type");
-					propertyFile = parameterGroup.getString("propertyFile");
-					propertyValue = parameterGroup.optString("propertyValue");
+					JSONObject propertyValueSourceJSON = (JSONObject)parameterGroup.get("propertyValueSource");
+					if(propertyValueSourceJSON.getInt("value") == 0 ) {
+						propertyFileMulti = propertyValueSourceJSON.getString("propertyFileMulti");
+						propertyValueMulti = propertyValueSourceJSON.optString("propertyValueMulti");
+						artifactoryURL = null;
+						artifactoryRepositories = null;
+						mustExclude = null;
+						mustInclude = null;
+					}
+					else if(propertyValueSourceJSON.getInt("value") == 1 ) {
+						artifactoryURL = propertyValueSourceJSON.getString("artifactoryURL");
+						artifactoryRepositories = propertyValueSourceJSON.optString("artifactoryRepositories");
+						mustExclude = propertyValueSourceJSON.getString("mustExclude");
+						mustInclude = propertyValueSourceJSON.optString("mustInclude");
+						propertyFileMulti = null;
+						propertyValueMulti = null;
+					}
+
 				}
 			}
 			else {
 				type = formData.getString("type");
 				propertyFile = formData.getString("propertyFile");
 				propertyKey = formData.getString("propertyKey");
-				propertyValue = formData.optString("value");
+				propertyFileMulti = formData.getString("propertyFileMulti");
+				propertyValue = formData.optString("propertyValue");
+				artifactoryURL = formData.getString("artifactoryURL");
+				mustExclude = formData.getString("mustExclude");
+				mustInclude = formData.getString("mustInclude");
+				artifactoryRepositories = formData.getString("artifactoryRepositories");
 				defaultPropertyFile = formData.optString("defaultPropertyFile");
 				defaultPropertyKey = formData.optString("defaultPropertyKey");
 				defaultPropertyValue = formData.optString("defaultValue");
 			}
 
-			return new ExtendedChoiceParameterDefinition(name, type, propertyValue, propertyFile, groovyScript, groovyScriptFile, bindings, propertyKey, defaultPropertyValue, defaultPropertyFile, defaultGroovyScript, defaultGroovyScriptFile, defaultBindings, defaultPropertyKey, quoteValue, visibleItemCount, description, multiSelectDelimiter);
+			return new ExtendedChoiceParameterDefinition(name, type, propertyValue, propertyFile, groovyScript, groovyScriptFile,
+					bindings, propertyKey, artifactoryURL, artifactoryRepositories, mustExclude, mustInclude, propertyValueMulti, propertyFileMulti, defaultPropertyValue, defaultPropertyFile,
+					defaultGroovyScript, defaultGroovyScriptFile, defaultBindings, defaultPropertyKey, quoteValue,
+					visibleItemCount, description, multiSelectDelimiter);
 		}
 	}
 
@@ -239,6 +295,18 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 
 	private String propertyKey;
 
+	private String artifactoryURL;
+
+	private String artifactoryRepositories;
+
+	private String mustExclude;
+
+	private String mustInclude;
+
+	private String propertyValueMulti;
+
+	private String propertyFileMulti;
+
 	private String defaultValue;
 
 	private String defaultPropertyFile;
@@ -254,9 +322,10 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 	private String multiSelectDelimiter;
 
 	public ExtendedChoiceParameterDefinition(String name, String type, String value, String propertyFile, String groovyScript,
-			String groovyScriptFile, String bindings, String propertyKey, String defaultValue, String defaultPropertyFile,
-			String defaultGroovyScript, String defaultGroovyScriptFile, String defaultBindings, String defaultPropertyKey, boolean quoteValue,
-			int visibleItemCount, String description, String multiSelectDelimiter) {
+			String groovyScriptFile, String bindings, String propertyKey, String artifactoryURL, String artifactoryRepositories,
+			String mustExclude, String mustInclude, String propertyValueMulti, String propertyFileMulti, String defaultValue,
+			String defaultPropertyFile, String defaultGroovyScript, String defaultGroovyScriptFile, String defaultBindings, String defaultPropertyKey,
+			boolean quoteValue, int visibleItemCount, String description, String multiSelectDelimiter) {
 		super(name, description);
 		this.type = type;
 
@@ -266,6 +335,12 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 		this.groovyScript = groovyScript;
 		this.groovyScriptFile = groovyScriptFile;
 		this.bindings = bindings;
+		this.artifactoryURL = artifactoryURL;
+		this.artifactoryRepositories = artifactoryRepositories;
+		this.mustExclude = mustExclude;
+		this.mustInclude = mustInclude;
+		this.propertyValueMulti = propertyValueMulti;
+		this.propertyFileMulti = propertyFileMulti;
 
 		this.defaultValue = defaultValue;
 		this.defaultPropertyFile = defaultPropertyFile;
@@ -527,6 +602,46 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 		this.bindings = bindings;
 	}
 
+	public String getArtifactoryURL() {
+		return artifactoryURL;
+	}
+
+	public void setArtifactoryURL(String artifactoryURL) {
+		this.artifactoryURL = artifactoryURL;
+	}
+
+	public String getArtifactoryRepositories() {
+		return artifactoryRepositories;
+	}
+
+	public void setArtifactoryRepositories(String artifactoryRepositories) { this.artifactoryRepositories = artifactoryRepositories; }
+
+	public String getMustExclude() {
+		return mustExclude;
+	}
+
+	public void getMustExclude(String mustExclude) { this.mustExclude = mustExclude; }
+
+	public String getMustInclude() {
+		return mustInclude;
+	}
+
+	public void getMustInclude(String artifactoryURL) {
+		this.mustInclude = mustInclude;
+	}
+
+	public String getPropertyValueMulti() {
+		return propertyValueMulti;
+	}
+
+	public void getPropertyValueMulti(String propertyValueMulti) { this.propertyValueMulti = propertyValueMulti; }
+
+	public String getPropertyFileMulti() {
+		return propertyFileMulti;
+	}
+
+	public void setPropertyFileMulti(String propertyFileMulti) { this.propertyFileMulti = propertyFileMulti; }
+
 	public String getDefaultPropertyKey() {
 		return defaultPropertyKey;
 	}
@@ -542,11 +657,12 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 	private ArrayList<Integer> columnIndicesForDropDowns(String[] headerColumns) {
 		ArrayList<Integer> columnIndicesForDropDowns = new ArrayList<Integer>();
 
-		String[] dropDownNames = value.split(",");
+		String[] dropDownNames = propertyValueMulti.split(",");
 
 		for(String dropDownName: dropDownNames) {
 			for(int i = 0; i < headerColumns.length; ++i) {
 				if(headerColumns[i].equals(dropDownName)) {
+					System.out.println(headerColumns[i]);
 					columnIndicesForDropDowns.add(new Integer(i));
 				}
 			}
@@ -556,29 +672,77 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 	}
 
 	LinkedHashMap<String, LinkedHashSet<String>> calculateChoicesByDropdownId() throws Exception {
-		File file = new File(propertyFile);
 		List<String[]> fileLines = Collections.emptyList();
-		if(file.isFile()) {
-			CSVReader csvReader = null;
-			try {
-				csvReader = new CSVReader(new FileReader(file), '\t');
-				fileLines = csvReader.readAll();
-			}
-			finally {
-				csvReader.close();
+		if (propertyFileMulti != null) {
+			File file = new File(propertyFileMulti);
+			if (file.isFile()) {
+				CSVReader csvReader = null;
+				try {
+					csvReader = new CSVReader(new FileReader(file), '\t');
+					fileLines = csvReader.readAll();
+				} finally {
+					csvReader.close();
+				}
+			} else {
+				URL propertyFileUrl = new URL(propertyFileMulti);
+				CSVReader csvReader = null;
+				try {
+					csvReader = new CSVReader(new InputStreamReader(propertyFileUrl.openStream()), '\t');
+					fileLines = csvReader.readAll();
+				} finally {
+					csvReader.close();
+				}
 			}
 		}
-		else {
-			URL propertyFileUrl = new URL(propertyFile);
-			CSVReader csvReader = null;
-			try {
-				csvReader = new CSVReader(new InputStreamReader(propertyFileUrl.openStream()), '\t');
-				fileLines = csvReader.readAll();
-			}
-			finally {
-				csvReader.close();
+		else if (artifactoryURL != null) {
+			String[] repos = artifactoryRepositories.split(",");
+			HttpClient httpclient = new HttpClient();
+			fileLines = new ArrayList();
+			propertyValueMulti = "REPOSITORY,ARTIFACT";
+			fileLines.add(propertyValueMulti.split(","));
+			for (String repo: repos) {
+				try {
+					GetMethod method = new GetMethod("http://" + artifactoryURL + "/artifactory/api/storage/" + repo);
+					httpclient.executeMethod(method);
+
+					if (method != null) {
+						String jsonString = new String(method.getResponseBody());
+						org.json.JSONObject obj = new org.json.JSONObject(jsonString);
+						org.json.JSONArray array = obj.getJSONArray("children");
+						List<String> artifacts;
+						for (int i = 0; i < array.length(); i++) {
+							if (array.getJSONObject(i).getString("folder").equals("false")) {
+								Boolean pass = true;
+								if (mustExclude != null && !mustExclude.equals("")) {
+									for (String exclude : mustExclude.split(",")) {
+										if (array.getJSONObject(i).getString("uri").contains(exclude)) {
+											pass = false;
+											break;
+										}
+									}
+								}
+								if (mustInclude != null && !mustInclude.equals("")) {
+									for (String include : mustInclude.split(",")) {
+										if (!array.getJSONObject(i).getString("uri").contains(include)) {
+											pass = false;
+											break;
+										}
+									}
+								}
+								if (pass) {
+									fileLines.add(new String[]{repo, array.getJSONObject(i).getString("uri").substring(1)});
+								}
+							}
+						}
+
+					}
+				}
+				catch (Exception e) {
+					continue;
+				}
 			}
 		}
+
 
 		if(fileLines.size() < 2) {
 			throw new Exception("Multi level tab delimited file must have at least 2 " + "lines (one for the header, and one or more for the data)");
@@ -594,7 +758,7 @@ public class ExtendedChoiceParameterDefinition extends ParameterDefinition {
 		choicesByDropdownId.put(prefix, new LinkedHashSet<String>());
 
 		for(int i = 0; i < columnIndicesForDropDowns.size(); ++i) {
-			String prettyCurrentColumnName = value.split(",")[i];
+			String prettyCurrentColumnName = propertyValueMulti.split(",")[i];
 			prettyCurrentColumnName = prettyCurrentColumnName.toLowerCase();
 			prettyCurrentColumnName = prettyCurrentColumnName.replace("_", " ");
 

@@ -13,7 +13,7 @@
     <f:textbox />
   </f:entry>
   <f:radioBlock name="parameterGroup" title="Simple Parameter Types" value="0" checked="${instance.type ne 'PT_MULTI_LEVEL_SINGLE_SELECT' and instance.type ne 'PT_MULTI_LEVEL_MULTI_SELECT'}">
-        <f:entry name="type" title="Parameter Type" field="type">
+        <f:entry title="Parameter Type" field="type">
             <select name="type">
                 <j:choose>
                     <j:when test="${instance.type eq 'PT_SINGLE_SELECT'}">
@@ -149,7 +149,7 @@
 	  </f:section>  
   </f:radioBlock>
   <f:radioBlock name="parameterGroup" title="Complex Parameter Types" value="1" checked="${instance.type eq 'PT_MULTI_LEVEL_SINGLE_SELECT' or instance.type eq 'PT_MULTI_LEVEL_MULTI_SELECT'}">
-        <f:entry name="type" title="Parameter Type" field="type">
+        <f:entry title="Parameter Type" field="type">
             <select name="type">
                 <j:choose>
                    <j:when test="${instance.type eq 'PT_MULTI_LEVEL_SINGLE_SELECT'}">       
@@ -168,14 +168,32 @@
                    </j:otherwise>
                 </j:choose>
             </select>
-        </f:entry>  
-        
-         <f:entry title="Property File" field="propertyFile">
-            <f:textbox value="${instance.propertyFile}"/>
-         </f:entry>
-         
-         <f:entry title="Value" field="propertyValue">
-            <f:textbox value="${instance.value}"/>
-         </f:entry>	 
+        </f:entry>
+      <f:section title="Choose Source for Value">
+          <f:radioBlock name="propertyValueSource" title="Property File" value="0" checked="${not empty instance.propertyFileMulti and not empty instance.propertyValueMulti}">
+              <f:entry title="Property File" field="propertyFileMulti">
+                  <f:textbox value="${instance.propertyFileMulti}"/>
+              </f:entry>
+              <f:entry title="Property Value" field="propertyValueMulti">
+                  <f:textbox value="${instance.propertyValueMulit}"/>
+              </f:entry>
+          </f:radioBlock>
+
+          <f:radioBlock name="propertyValueSource" title="Artifactory" value="1" checked="${not empty instance.artifactoryURL and not empty instance.artifactoryRepositories}">
+              <f:entry title="Artifactory URL" field="artifactoryURL">
+                  <f:textbox value="${instance.artifactoryURL}"/>
+              </f:entry>
+              <f:entry title="Artifactory Repositories" field="artifactoryRepositories">
+                  <f:textbox value="${instance.artifactoryRepositories}"/>
+              </f:entry>
+              <f:entry title="Must Exclude" field="mustExclude">
+                  <f:textbox value="${instance.mustExclude}"/>
+              </f:entry>
+              <f:entry title="Must Include" field="mustInclude">
+                  <f:textbox value="${instance.mustInclude}"/>
+              </f:entry>
+          </f:radioBlock>
+      </f:section>
+
    </f:radioBlock>	  
 </j:jelly>

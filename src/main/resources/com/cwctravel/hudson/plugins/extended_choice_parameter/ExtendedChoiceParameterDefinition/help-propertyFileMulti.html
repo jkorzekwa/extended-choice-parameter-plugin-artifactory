@@ -1,0 +1,14 @@
+<div>
+    The multi-level property file is a tab delimited file, with levels defined in columns and choices defined in rows.  For example, to have a 2 level selection where you first select a country and then a city, you could specify a file such as the following:<br><br>
+            <pre>
+Country	City
+United States	San Francisco
+United States	Chicago
+Mexico	Mexico City
+Mexico	Cancun
+            </pre>
+    This would result in a first drop down with the options "Select a country...", "United States", and "Mexico" (the initial selection is "Select a country...", which serves as a label for the drop down).  After the user selects a country, a "City" drop down would appear.  If United States was chosen first, then San Francisco and Chicago would be options, but if Mexico was selected then instead Mexico City and Cancun would be options.
+    The properties file can be placed anywhere on the file-system that Jenkins can access.
+    <br><br>
+    This property file has different meaning for multi-level select -- see the parameter type help for more info.
+</div>
