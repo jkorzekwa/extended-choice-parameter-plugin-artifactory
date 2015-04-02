@@ -10,5 +10,5 @@
   Since we don't really have anything dynamic here, let's just use static HTML. 
 -->
 <div>
-  Adds extended functionality to Choice parameter
+  Adds Artifactory to Extended Choice Parameter
 </div>
