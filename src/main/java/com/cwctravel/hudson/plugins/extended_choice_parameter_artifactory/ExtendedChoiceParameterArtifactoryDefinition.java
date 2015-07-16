@@ -425,14 +425,15 @@ public class ExtendedChoiceParameterArtifactoryDefinition extends ParameterDefin
 		}
 		else if(value instanceof JSONArray) {
 			JSONArray jsonValues = (JSONArray)value;
-			if(type.equals(PARAMETER_TYPE_MULTI_LEVEL_SINGLE_SELECT) || type.equals(PARAMETER_TYPE_MULTI_LEVEL_MULTI_SELECT)) {
+			System.out.print("artifact: " + this.artifactoryURL + "\n");
+			if((type.equals(PARAMETER_TYPE_MULTI_LEVEL_SINGLE_SELECT) || type.equals(PARAMETER_TYPE_MULTI_LEVEL_MULTI_SELECT)) && this.artifactoryURL == "") {
 				final int valuesBetweenLevels = this.propertyValueMulti.split(",").length;
-
+				System.out.print(jsonValues + "\n");
 				Iterator<?> it = jsonValues.iterator();
-				for(int i = 1; it.hasNext(); i++) {
+				for (int i = 0; it.hasNext(); i++) {
 					String nextValue = it.next().toString();
-					if(i % valuesBetweenLevels == 0) {
-						if(strValue.length() > 0) {
+					if (i % valuesBetweenLevels == 0) {
+						if (strValue.length() > 0) {
 							strValue += getMultiSelectDelimiter();
 						}
 						strValue += nextValue;
@@ -440,6 +441,7 @@ public class ExtendedChoiceParameterArtifactoryDefinition extends ParameterDefin
 				}
 			}
 			else {
+				System.out.println("values: " + jsonValues);
 				strValue = StringUtils.join(jsonValues.iterator(), getMultiSelectDelimiter());
 			}
 		}
